@@ -7,13 +7,18 @@ use Illuminate\Database\Eloquent\Model;
 class Document extends Model
 {
     protected $fillable = [
-        'typeDocumentId', // Adicione este campo
+        'typeDocumentId',
         'descriptions',
         'dateOfPayment',
         'dueDate',
         'value',
         'document'
     ];
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class, 'typeDocumentId');
+    }
 
     public function typeDocument()
     {

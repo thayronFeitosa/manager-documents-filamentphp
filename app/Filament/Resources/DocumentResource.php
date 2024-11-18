@@ -3,15 +3,14 @@
 namespace App\Filament\Resources;
 
 use App\Filament\Resources\DocumentResource\Pages;
-use App\Filament\Resources\DocumentResource\RelationManagers;
 use App\Models\Document;
+use App\Models\TypeDocument;
 use Filament\Forms;
 use Filament\Forms\Form;
 use Filament\Resources\Resource;
 use Filament\Tables;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\SoftDeletingScope;
+use Illuminate\Validation\Rule;
 
 class DocumentResource extends Resource
 {
@@ -24,24 +23,45 @@ class DocumentResource extends Resource
         return $form
             ->schema([
                 Forms\Components\Select::make('typeDocumentId')
-                ->label('Tipo de Documento')
-                ->options(function () {
-                    return \App\Models\TypeDocument::where('user_id', auth()->id())
-                        ->pluck('name', 'id');
-                })
-                ->required()
-                ->searchable() // Permite buscar no select
-                ->placeholder('Selecione um tipo de documento'), // Placeholder no select
+                    ->label('Tipo de Documento')
+                    ->relationship('typeDocument', 'name')
+                    ->searchable()
+                    ->options(fn () => TypeDocument::where('user_id', auth()->id())
+                        ->pluck('name', 'id'))
+                    ->getSearchResultsUsing(fn (string $search) => TypeDocument::where('user_id', auth()->id())
+                        ->where('name', 'like', "%{$search}%")
+                        ->pluck('name', 'id'))
+
+                    ->createOptionForm([
+                        Forms\Components\TextInput::make('name')
+                            ->label('Nome do Tipo de Documento')
+                            ->required()
+                            ->maxLength(255)
+                            ->rules(fn() => [
+                                Rule::unique('type_documents', 'name')
+                                    ->where('user_id', auth()->id())
+                            ])
+                            ->validationMessages([
+                                'unique' => 'O :attribute já existe.',
+                            ])
+
+                    ])
+                ->required(),
                 Forms\Components\TextInput::make('descriptions')
+                    ->label('Descrição')
                     ->maxLength(255),
                 Forms\Components\DatePicker::make('dateOfPayment')
+                    ->label('Data de Pagamento')
                     ->required(),
                 Forms\Components\DatePicker::make('dueDate')
+                    ->label('Data de Vencimento')
                     ->required(),
                 Forms\Components\TextInput::make('value')
+                    ->label('Valor')
                     ->required()
                     ->numeric(),
                 Forms\Components\FileUpload::make('document')
+                    ->label('Anexo')
             ]);
     }
 
@@ -50,15 +70,15 @@ class DocumentResource extends Resource
         return $table
             ->columns([
                 Tables\Columns\TextColumn::make('typeDocument.name')
-                ->label('Tipo de Documento')
-                ->numeric()
-                ->sortable(),
+                    ->label('Tipo de Documento')
+                    ->numeric()
+                    ->sortable(),
                 Tables\Columns\TextColumn::make('dateOfPayment')
-                ->label('Data de Pagamento')
+                    ->label('Data de Pagamento')
                     ->dateTime('d/m/Y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('dueDate')
-                ->label('Data de Vencimento')
+                    ->label('Data de Vencimento')
                     ->dateTime('d/m/Y')
                     ->sortable(),
                 Tables\Columns\TextColumn::make('value')
@@ -73,7 +93,7 @@ class DocumentResource extends Resource
                     ->dateTime()
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
-                    Tables\Columns\TextColumn::make('descriptions')
+                Tables\Columns\TextColumn::make('descriptions')
                     ->searchable(),
             ])
             ->filters([
@@ -82,13 +102,13 @@ class DocumentResource extends Resource
             ->actions([
                 Tables\Actions\EditAction::make(),
                 Tables\Actions\Action::make('view_image_or_pdf')
-                ->label('Ver Arquivo')
-                ->icon('heroicon-o-eye')
-                ->modalHeading('Visualizar Arquivo')
-                ->modalContent(fn($record) => view('filament.resources.document.modal.view_file', [
-                    'fileUrl' => $record->document ? storage_path("app/public/{$record->document}") : null,
-                    'fileType' => $record->document ? pathinfo($record->document, PATHINFO_EXTENSION) : null,
-                ])),
+                    ->label('Ver Arquivo')
+                    ->icon('heroicon-o-eye')
+                    ->modalHeading('Visualizar Arquivo')
+                    ->modalContent(fn($record) => view('filament.resources.document.modal.view_file', [
+                        'fileUrl' => $record->document ? storage_path("app/public/{$record->document}") : null,
+                        'fileType' => $record->document ? pathinfo($record->document, PATHINFO_EXTENSION) : null,
+                    ])),
             ])
             ->bulkActions([
                 Tables\Actions\BulkActionGroup::make([
