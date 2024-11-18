@@ -19,7 +19,7 @@ return new class extends Migration
             $table->dateTime('dateOfPayment');
             $table->dateTime('dueDate');
             $table->decimal('value', 10, 2);
-            $table->string('pathDocuments')->nullable();
+            $table->string('document')->nullable();
             $table->foreign('typeDocumentId')->references('id')->on('type_documents')->onDelete('cascade');
 
             $table->timestamps();
